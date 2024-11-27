@@ -22,34 +22,40 @@ class BookController extends Controller
     }
     public function store(Request $request)
     {
-       $validated = $request->validate([
+        // Validasi data input
+        $validated = $request->validate([
             'title' => 'required|max:255',
             'author' => 'required|max:255',
-            'year' => 'required|max:2077',
+            'year' => 'required|integer|max:2077',
             'publisher' => 'required|max:255',
             'city' => 'required|max:50',
-            'cover' => 'required',
-            'bookshelf_id' => 'required|max:5',
+            'cover' => 'required|file|mimes:jpeg,png,jpg|max:2048',
+            'bookshelf_id' => 'required|integer|exists:bookshelves,id',
         ]);
+    
+        // Upload file jika ada
         if ($request->hasFile('cover')) {
             $path = $request->file('cover')->storeAs(
                 'public/cover_buku',
                 'cover_buku_' . time() . '.' . $request->file('cover')->extension()
             );
             $validated['cover'] = basename($path);
-        } 
-        $book = Book::create($validated);
-        if ($book) {
-            $notification = array(
-                'message' => 'Data buku berhasil disimpan',
-                'alert-type' => 'success'
-            );
-        } else {
-            $notification = array(
-                'message' => 'Data buku gagal disimpan',
-                'alert-type' => 'error'
-            );
         }
+    
+        // Simpan data ke database
+        $book = Book::create($validated);
+    
+        // Tentukan pesan notifikasi
+        $notification = $book
+            ? ['message' => 'Data buku berhasil disimpan', 'alert-type' => 'success']
+            : ['message' => 'Data buku gagal disimpan', 'alert-type' => 'error'];
+    
+        // Cek apakah tombol "Save & Create Another" ditekan
+        if ($request->has('save_and_create')) {
+            return redirect()->route('book.create')->with($notification);
+        }
+    
+        // Default redirect ke halaman daftar buku
         return redirect()->route('book')->with($notification);
     }
     public function edit($id){
